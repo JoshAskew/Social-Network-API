@@ -106,6 +106,24 @@ app.delete('/user/:username/friends/:friendUsername', async (req, res) => {
         return res.status(500).json({ error: 'Something went wrong' });
     }
 });
+app.put('/user/:username', async (req, res) => {
+    try {
+        const { username } = req.params;
+        const updateData = req.body; // Capture all fields from req.body as update data
+        // Find the user and update the fields based on provided data
+        const updatedUser = await User.findOneAndUpdate({ username }, updateData, // Apply all provided fields in req.body
+        { new: true, runValidators: true } // Return the updated document and validate data
+        );
+        if (!updatedUser) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        return res.status(200).json(updatedUser);
+    }
+    catch (err) {
+        console.log('Uh Oh, something went wrong', err);
+        return res.status(500).json({ error: 'Something went wrong' });
+    }
+});
 db.once('open', () => {
     app.listen(PORT, () => {
         console.log(`API server running on port ${PORT}!`);
