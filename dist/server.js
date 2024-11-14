@@ -106,13 +106,12 @@ app.delete('/user/:username/friends/:friendUsername', async (req, res) => {
         return res.status(500).json({ error: 'Something went wrong' });
     }
 });
+// Find the user and update the fields based on provided data
 app.put('/user/:username', async (req, res) => {
     try {
         const { username } = req.params;
-        const updateData = req.body; // Capture all fields from req.body as update data
-        // Find the user and update the fields based on provided data
-        const updatedUser = await User.findOneAndUpdate({ username }, updateData, // Apply all provided fields in req.body
-        { new: true, runValidators: true } // Return the updated document and validate data
+        const updateData = req.body;
+        const updatedUser = await User.findOneAndUpdate({ username }, updateData, { new: true, runValidators: true } // Return the updated document and validate data
         );
         if (!updatedUser) {
             return res.status(404).json({ error: 'User not found' });
@@ -121,6 +120,21 @@ app.put('/user/:username', async (req, res) => {
     }
     catch (err) {
         console.log('Uh Oh, something went wrong', err);
+        return res.status(500).json({ error: 'Something went wrong' });
+    }
+});
+//Find user by ID
+app.get('/user/id/:_id', async (req, res) => {
+    try {
+        const { _id } = req.params;
+        const user = await User.findById(_id);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        return res.status(200).json(user);
+    }
+    catch (err) {
+        console.error('Error:', err);
         return res.status(500).json({ error: 'Something went wrong' });
     }
 });

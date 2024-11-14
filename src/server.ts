@@ -3,6 +3,7 @@ import db from './config/connection.js'; // Assuming db connection is set up
 // Importing the User model
 import { User } from './models/index.js';
 import { Types } from 'mongoose';
+import Thought from './models/Thought.js';
 
 const PORT = process.env.PORT || 3001;
 const app = express();
@@ -119,15 +120,15 @@ app.delete('/user/:username/friends/:friendUsername', async (req, res) => {
   }
 });
 
+// Find the user and update the fields based on provided data
 app.put('/user/:username', async (req, res) => {
   try {
     const { username } = req.params;
-    const updateData = req.body; // Capture all fields from req.body as update data
+    const updateData = req.body;
 
-    // Find the user and update the fields based on provided data
     const updatedUser = await User.findOneAndUpdate(
       { username }, 
-      updateData,  // Apply all provided fields in req.body
+      updateData, 
       { new: true, runValidators: true } // Return the updated document and validate data
     );
 
@@ -141,6 +142,67 @@ app.put('/user/:username', async (req, res) => {
     return res.status(500).json({ error: 'Something went wrong' });
   }
 });
+
+//Find user by ID
+app.get('/user/id/:_id', async (req, res) => {
+  try {
+    const { _id } = req.params;
+
+    const user = await User.findById(_id);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    return res.status(200).json(user);
+  } catch (err) {
+    console.error('Error:', err);
+    return res.status(500).json({ error: 'Something went wrong' });
+  }
+});
+
+
+
+//add thought
+
+app.post('/thought', async (req, res) => {
+  try {
+    const { thoughtText, username } = req.body;
+
+    if (!thoughtText || thoughtText.length < 1 || thoughtText.length > 280) {
+      return res.status(400).json({ error: 'Thought text is required and must be between 1 and 280 characters.' });
+    }
+
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    const newThought = new Thought({
+      thoughtText,
+      username,
+    });
+
+    // Save the thought to the database
+    await newThought.save();
+
+    // Add the thought's ObjectId to the user's thoughts array
+    user.thoughts.push(newThought._id as Types.ObjectId); // Type assertion for ObjectId
+    await user.save();
+
+    return res.status(201).json(newThought); // Respond with the new thought
+  } catch (err) {
+    console.error('Error adding thought:', err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
+
+
+
+
+
 
 db.once('open', () => {
   app.listen(PORT, () => {
