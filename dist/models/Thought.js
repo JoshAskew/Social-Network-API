@@ -1,6 +1,5 @@
-// Thought.ts
 import { Schema, model } from 'mongoose';
-import { reactionSchema } from './Reactions';
+import { reactionSchema } from './Reactions.js';
 const thoughtSchema = new Schema({
     thoughtText: {
         type: String,

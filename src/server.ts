@@ -1,6 +1,5 @@
 import express from 'express';
-import db from './config/connection.js'; // Assuming db connection is set up
-// Importing the User model
+import db from './config/connection.js';
 import { User } from './models/index.js';
 import { Types } from 'mongoose';
 import Thought from './models/Thought.js';
@@ -10,6 +9,7 @@ const app = express();
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+
 
 // Creates a new User
 app.post('/user', async (req, res) => {
@@ -30,6 +30,7 @@ app.post('/user', async (req, res) => {
   }
 });
 
+
 // Finds all users
 app.get('/user', async (_req, res) => {
   try {
@@ -40,6 +41,7 @@ app.get('/user', async (_req, res) => {
     return res.status(500).json({ error: 'Something went wrong' });
   }
 });
+
 
 // Finds the first matching document by username and returns it.
 app.get('/user/:username', async (req, res) => {
@@ -56,6 +58,7 @@ app.get('/user/:username', async (req, res) => {
   }
 });
 
+
 // Finds the first matching document by username and deletes it.
 app.delete('/user/:username', async (req, res) => {
   try {
@@ -70,6 +73,7 @@ app.delete('/user/:username', async (req, res) => {
     return res.status(500).json({ error: 'Something went wrong' });
   }
 });
+
 
 // Add a friend
 app.post('/user/:username/friends/:friendUsername', async (req, res) => {
@@ -97,6 +101,7 @@ app.post('/user/:username/friends/:friendUsername', async (req, res) => {
   }
 });
 
+
 // Remove a friend
 app.delete('/user/:username/friends/:friendUsername', async (req, res) => {
   try {
@@ -120,6 +125,7 @@ app.delete('/user/:username/friends/:friendUsername', async (req, res) => {
   }
 });
 
+
 // Find the user and update the fields based on provided data
 app.put('/user/:username', async (req, res) => {
   try {
@@ -142,6 +148,7 @@ app.put('/user/:username', async (req, res) => {
     return res.status(500).json({ error: 'Something went wrong' });
   }
 });
+
 
 //Find user by ID
 app.get('/user/id/:_id', async (req, res) => {
@@ -190,12 +197,143 @@ app.post('/thought', async (req, res) => {
     user.thoughts.push(newThought._id as Types.ObjectId); // Type assertion for ObjectId
     await user.save();
 
-    return res.status(201).json(newThought); // Respond with the new thought
+    return res.status(201).json(newThought);
   } catch (err) {
     console.error('Error adding thought:', err);
     return res.status(500).json({ error: 'Server error' });
   }
 });
+
+
+//Get thought by ID
+app.get('/thought/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const thought = await Thought.findById(id);
+
+    // If the thought is not found, return a 404 error
+    if (!thought) {
+      return res.status(404).json({ error: 'Thought not found' });
+    }
+
+    return res.status(200).json(thought);
+  } catch (err) {
+    console.error('Error fetching thought:', err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
+//Get all thoughts
+app.get('/thought', async (_req, res) => {
+  try {
+    const thoughts = await Thought.find();
+
+    // If no thoughts are found, return an empty array
+    if (thoughts.length === 0) {
+      return res.status(404).json({ message: 'No thoughts found' });
+    }
+
+    // Return the array of thoughts
+    return res.status(200).json(thoughts);
+  } catch (err) {
+    console.error('Error fetching thoughts:', err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
+//Add a reaction to a thought
+app.post('/thought/:thoughtId/reaction', async (req, res) => {
+  try {
+    const { thoughtId } = req.params;
+    const { reactionBody, username } = req.body;
+
+    if (!reactionBody || !username) {
+      return res.status(400).json({ error: 'Reaction body and username are required' });
+    }
+
+    const thought = await Thought.findById(thoughtId);
+
+    if (!thought) {
+      return res.status(404).json({ error: 'Thought not found' });
+    }
+
+    // Create the reaction object with a unique reactionId
+    const newReaction = {
+      reactionId: new Types.ObjectId(),  // Generates a unique ObjectId for the reaction
+      reactionBody,
+      username,
+      createdAt: new Date(),
+    };
+
+    thought.reactions.push(newReaction);
+
+    // Save the updated thought
+    await thought.save();
+
+    // Return the updated thought with reactions
+    return res.status(200).json(thought);
+  } catch (err) {
+    console.error('Error adding reaction:', err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
+// Delete a reaction from a thought
+app.delete('/thought/:thoughtId/reaction/:reactionId', async (req, res) => {
+  try {
+    const { thoughtId, reactionId } = req.params;
+
+    // Find the thought by its ID
+    const thought = await Thought.findById(thoughtId);
+    if (!thought) {
+      return res.status(404).json({ error: 'Thought not found' });
+    }
+
+    // Find the reaction to be removed
+    const reactionIndex = thought.reactions.findIndex(
+      (reaction) => reaction.reactionId.toString() === reactionId
+    );
+
+    if (reactionIndex === -1) {
+      return res.status(404).json({ error: 'Reaction not found' });
+    }
+
+    // Remove the reaction from the thought's reactions array
+    thought.reactions.splice(reactionIndex, 1);
+    await thought.save();
+
+    return res.status(200).json({ message: 'Reaction deleted' });
+  } catch (err) {
+    console.error('Error deleting reaction:', err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
+// Get all reactions for a specific thought
+app.get('/thought/:thoughtId/reactions', async (req, res) => {
+  try {
+    const { thoughtId } = req.params;
+
+    // Find the thought by its ID
+    const thought = await Thought.findById(thoughtId).select('reactions');
+    if (!thought) {
+      return res.status(404).json({ error: 'Thought not found' });
+    }
+
+    // Return all reactions associated with the thought
+    return res.status(200).json(thought.reactions);
+  } catch (err) {
+    console.error('Error fetching reactions:', err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
 
 
 

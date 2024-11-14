@@ -1,6 +1,6 @@
-// Thought.ts
+
 import { Schema, model, Document } from 'mongoose';
-import { reactionSchema, IReaction } from './Reactions';
+import { reactionSchema, IReaction } from './Reactions.js';
 
 interface IThought extends Document {
   thoughtText: string;
